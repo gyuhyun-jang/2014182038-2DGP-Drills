@@ -1,8 +1,10 @@
 import game_framework
 from pico2d import *
 from ball import Ball
+import brick
 
 import game_world
+
 
 # Boy Run Speed
 PIXEL_PER_METER = (10.0 / 0.3)  # 10 pixel 30 cm
@@ -44,20 +46,27 @@ class IdleState:
             boy.velocity -= RUN_SPEED_PPS
         elif event == LEFT_UP:
             boy.velocity += RUN_SPEED_PPS
+        elif event == SPACE:
+            boy.isJump = True
+            boy.accelation = RUN_SPEED_PPS * 5
         boy.timer = 1000
 
     @staticmethod
     def exit(boy, event):
-        if event == SPACE:
-            boy.fire_ball()
         pass
 
     @staticmethod
     def do(boy):
         boy.frame = (boy.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8
         boy.timer -= 1
+        boy.y += boy.accelation * game_framework.frame_time
         if boy.timer == 0:
             boy.add_event(SLEEP_TIMER)
+
+        if boy.isJump or boy.dir != 0 and boy.isFall:
+            boy.accelation -= RUN_SPEED_PPS * game_framework.frame_time * 10
+            if boy.y < 90:
+                boy.stop()
 
     @staticmethod
     def draw(boy):
@@ -79,19 +88,25 @@ class RunState:
             boy.velocity -= RUN_SPEED_PPS
         elif event == LEFT_UP:
             boy.velocity += RUN_SPEED_PPS
+        elif event == SPACE:
+            boy.isJump = True
+            boy.accelation = RUN_SPEED_PPS * 5
         boy.dir = clamp(-1, boy.velocity, 1)
 
     @staticmethod
     def exit(boy, event):
-        if event == SPACE:
-            boy.fire_ball()
+        pass
 
     @staticmethod
     def do(boy):
-        #boy.frame = (boy.frame + 1) % 8
         boy.frame = (boy.frame + FRAMES_PER_ACTION * ACTION_PER_TIME * game_framework.frame_time) % 8
         boy.x += boy.velocity * game_framework.frame_time
         boy.x = clamp(25, boy.x, 1600 - 25)
+        boy.y += boy.accelation * game_framework.frame_time
+        if boy.isJump or boy.dir != 0:
+            boy.accelation -= RUN_SPEED_PPS * game_framework.frame_time * 10
+            if boy. y < 90:
+                boy.stop()
 
     @staticmethod
     def draw(boy):
@@ -146,15 +161,15 @@ class Boy:
         self.event_que = []
         self.cur_state = IdleState
         self.cur_state.enter(self, None)
+        self.accelation = 0
+        self.isJump = False
+        self.isFall = False
+
 
     def get_bb(self):
+        return self.x - 25, self.y - 35, self.x + 25, self.y + 45
         # fill here
         return 0, 0, 0, 0
-
-
-    def fire_ball(self):
-        ball = Ball(self.x, self.y, self.dir * RUN_SPEED_PPS * 10)
-        game_world.add_object(ball, 1)
 
 
     def add_event(self, event):
@@ -171,6 +186,7 @@ class Boy:
     def draw(self):
         self.cur_state.draw(self)
         self.font.draw(self.x - 60, self.y + 50, '(Time: %3.2f)' % get_time(), (255, 255, 0))
+        draw_rectangle(*self.get_bb())
         #fill here
 
 
@@ -179,3 +195,15 @@ class Boy:
             key_event = key_event_table[(event.type, event.key)]
             self.add_event(key_event)
 
+    def on_brick(self, brick):
+        if self.y > brick.y:
+            self.x += brick.move_speed * game_framework.frame_time
+            self.y = 235
+        else:
+            self.isFall = True
+            self.accelation = 0
+
+    def stop(self):
+        self.y = 90
+        self.accelation = 0
+        self.isJump = False
