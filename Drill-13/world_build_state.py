@@ -14,7 +14,8 @@ from zombie import Zombie
 
 
 boy = None
-
+zombie = None
+zombies = []
 
 name = "WorldBuildState"
 
@@ -39,13 +40,23 @@ def resume():
 def get_boy():
     return boy
 
+def get_zombies():
+    return zombies
+
 
 
 def create_new_world():
-    global boy
+    global boy, zombies
     boy = Boy()
     game_world.add_object(boy, 1)
 
+    with open('zombie_data.json', 'r') as f:
+        zombie_data_list = json.load(f)
+
+    for data in zombie_data_list:
+        zombie = Zombie(data['name'], data['x'], data['y'], data['size'])
+        zombies = zombies + [zombie]
+        game_world.add_object(zombie, 1)
     # fill here
 
 
@@ -54,6 +65,11 @@ def create_new_world():
 def load_saved_world():
     global boy
 
+    game_world.load()
+    for o in game_world.all_objects():
+        if isinstance(o, Boy):
+            boy = o
+            break
     # fill here
 
 
