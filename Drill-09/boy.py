@@ -126,8 +126,6 @@ next_state_table = {
 
 
 
-
-
 class Boy:
 
     def __init__(self):
